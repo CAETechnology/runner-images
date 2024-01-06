@@ -21,15 +21,11 @@ parameters:
   - name: agent_pool
     type: object
     default:
-      name: 'ci-agent-pool'
+      name: 'caelabs-sponsorship-agent-builders'
 
   - name: variable_group_name
     type: string
     default: 'Image Generation Variables'
-
-  - name: create_release
-    type: boolean
-    default: true
 
   - name: repository_ref
     type: string
@@ -107,6 +103,7 @@ jobs:
     env:
       PACKER_LOG: 1
       PACKER_LOG_PATH: "$(Agent.TempDirectory)/packer-log.txt"
+      PACKER_GITHUB_API_TOKEN: $(GITHUB_API_TOKEN)
 
   - task: PowerShell@2
     displayName: 'Copy image artifacts to the separate directory'
@@ -155,29 +152,3 @@ jobs:
       arguments: -PackerLogPath "$(Agent.TempDirectory)/packer-log.txt" `
                         -PrefixToPathTrim "$(TemplateDirectoryPath)" `
                         -PrintTopNLongest 25
-
-  - ${{ if eq(parameters.create_release, true) }}:
-    - task: PowerShell@2
-      displayName: 'Create release for VM deployment'
-      inputs:
-        targetType: filePath
-        filePath: ./images.CI/linux-and-win/create-release.ps1
-        arguments: -BuildId $(Build.BuildId) `
-                   -Organization $(RELEASE_TARGET_ORGANIZATION) `
-                   -DefinitionId $(RELEASE_TARGET_DEFINITION_ID) `
-                   -Project $(RELEASE_TARGET_PROJECT) `
-                   -ImageType "${{ parameters.image_type }}" `
-                   -ManagedImageName "$(ManagedImageName)" `
-                   -AccessToken $(RELEASE_TARGET_TOKEN)
-
-  - task: PowerShell@2
-    displayName: 'Clean up resources'
-    condition: always()
-    inputs:
-      targetType: filePath
-      filePath: ./images.CI/linux-and-win/cleanup.ps1
-      arguments: -TempResourceGroupName "$(TempResourceGroupName)" `
-                 -SubscriptionId $(AZURE_SUBSCRIPTION) `
-                 -ClientId $(CLIENT_ID) `
-                 -ClientSecret $(CLIENT_SECRET) `
-                 -TenantId $(AZURE_TENANT)
